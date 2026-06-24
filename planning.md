@@ -4,7 +4,7 @@
 
 **r/nba** — the primary subreddit for NBA basketball discussion with ~8M members.
 
-This community is an ideal fit for a classification task because its discourse spans an unusually wide quality range: the same thread can contain data-driven breakdowns of a player's efficiency splits, pure emotional reactions to a buzzer-beater, and confident opinions stated without any evidence. NBA fans themselves regularly debate whether a claim is a "hot take" or "actual analysis," making the distinction culturally meaningful within the community — not just an artificial label imposed from outside. Text is long enough (most top-level posts are 2–10 sentences) to contain enough signal for a model to learn from.
+This community is an ideal fit for a classification task because its discourse spans an unusually wide quality range: the same thread can contain data-driven breakdowns of a player's efficiency splits, factual event reports (trades, injuries, scores), and confident opinions stated without any evidence. NBA fans themselves regularly debate whether a claim is a "hot take" or "actual analysis," making the distinction culturally meaningful within the community — not just an artificial label imposed from outside. Text is long enough (most top-level posts are 2–10 sentences) to contain enough signal for a model to learn from.
 
 ---
 
@@ -27,11 +27,13 @@ A bold, confident opinion stated without supporting evidence or with only decora
 - "The Lakers will never win another championship with LeBron. He's too old and his supporting cast is cooked. Stop pretending otherwise."
 
 ### `reaction`
-An immediate emotional response to a specific game event, trade announcement, or breaking news. Little to no argument — the post expresses a feeling or surprise in the moment. Context is usually tied to something that just happened.
+A short, factual report of a recent event — a game result, trade, injury, award, or milestone announcement — with no argument or opinion. The post describes what happened rather than asserting a claim about it. The key signal is neutral, headline-style language that states a fact without editorializing.
 
 **Examples:**
-- "I CANNOT believe they just traded Kyrie. What is going on with this league??"
-- "That Kawhi shot just ended a whole franchise's season. I'm still shaking. This sport is insane."
+- "Nikola Jokic wins his fifth MVP in 6 years — record-tying achievement in NBA history"
+- "Boston Celtics trade Jaylen Brown to Warriors in 3-team deal involving Draymond Green"
+
+*Note: during annotation the label was consistently applied to factual event-report posts rather than emotionally-worded community reactions. The definition above reflects the annotated data.*
 
 ---
 
@@ -45,11 +47,34 @@ This post cites a specific, verifiable stat — but the stat is cherry-picked fo
 
 **Decision rule:** If the evidence is specific, verifiable, AND forms the logical core of the argument (i.e., the post is reasoning from evidence to conclusion), label it `analysis`. If the evidence is decorative — one stat selected to make an assertion sound credible, without building a real argument — label it `hot_take`. The test: would removing the stat change the post's conclusion? If yes, it's analysis. If no (the opinion was already decided and the stat is support-shopping), it's a hot take.
 
-A secondary edge case is the **hot-take-with-context reaction** — a post that reacts emotionally to a game but also makes a bold claim:
+A secondary edge case is the **event-anchored hot take** — a post that references a recent event but makes a bold opinion claim about what it means:
 
 > "This loss proved the Knicks are frauds. I knew they couldn't close."
 
-**Decision rule:** If the post's primary purpose is expressing a feeling triggered by a specific, recent event, label it `reaction`. If the post's primary purpose is asserting an opinion that stands independent of the event (the event is evidence for a claim, not the trigger for a feeling), label it `hot_take`.
+**Decision rule:** If the post states only what happened (neutral headline format, no opinion language), label it `reaction`. If the post asserts what the event *means* or draws a conclusion from it ("this proves," "I knew," "they are done"), label it `hot_take`. The test: could a neutral journalist have written it? If yes, `reaction`. If it requires a point of view, `hot_take`.
+
+### Additional edge cases discovered during annotation
+
+**Case 3 — The rhetorical-question hot take:**
+> "Victor Wembanyama blocks 7 shots in 28 minutes — is he already the best defensive player in the league? His combination of length, timing, and IQ on that end of the floor is unlike anything we've seen before."
+
+Framed as a question but the body asserts "unlike anything we've seen before" without data. If the question exists to float a bold claim rather than genuinely invite analysis, label it `hot_take`.
+
+→ Decision: `hot_take`
+
+**Case 4 — The reactive game post that pivots to a pattern claim:**
+> "Jayson Tatum's shooting slump continues — 4-of-19 from the field in Game 4 loss. These playoff shooting slumps are becoming a pattern. You can't go ice cold in three straight series and expect to win championships."
+
+The specific game stat (4-of-19) establishes a real event, but the primary claim is a lasting critical opinion about Tatum. The game is context; the hot take is the thesis. The post's purpose is the opinion, not the reaction.
+
+→ Decision: `hot_take`
+
+**Case 5 — The conspiracy claim with vague quantitative language:**
+> "I've tracked the fourth-quarter foul calls in Knicks games this postseason. The disparity is statistically significant. Make of that what you will."
+
+Claims to have data and uses the phrase "statistically significant" — but provides no actual numbers, no comparison group, no methodology. This is vague quantitative language deployed to make an assertion sound analytical. The conspiracy framing ("the league is rigged") was determined before any data was cited.
+
+→ Decision: `hot_take` (decorative evidence, not real analysis)
 
 ---
 
@@ -62,7 +87,7 @@ A secondary edge case is the **hot-take-with-context reaction** — a post that 
 **Collection strategy:**
 - `analysis`: search for posts that cite stats, compare players across eras, or break down film/tactical observations. Game-thread top-level analytical comments and weekly discussion threads ("Breakdown of X's performance") are good sources.
 - `hot_take`: "Hot takes" megathread posts, post-game threads where users make sweeping claims, and any post starting with "Unpopular opinion:" or "Change my mind."
-- `reaction`: Game threads (in-game comments), trade deadline reaction posts, and breaking news comment sections.
+- `reaction`: r/nba post titles reporting game results, trade announcements, injury reports, award announcements, and milestone events — posts that describe what happened without opinion language.
 
 **If a label is underrepresented after 200 examples:** Actively search for that label type using keyword filters (e.g., "stat" or "per 100" for analysis; "game thread" for reaction) rather than sampling uniformly. Document any active oversampling in the dataset CSV.
 
