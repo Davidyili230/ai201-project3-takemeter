@@ -1,3 +1,6 @@
+# Loom Demo Link
+https://www.loom.com/share/722c3c4466b84a4c9e3c1f3c7cab9693 
+
 # TakeMeter
 
 A fine-tuned text classifier for r/nba Reddit discourse. Given a post, TakeMeter predicts whether it is a structured **analysis**, an unsupported **hot_take**, or a factual **reaction** to a recent event.
