@@ -20,9 +20,43 @@ This community is well-suited for a classification task because the same thread 
 | `hot_take` | A bold, confident opinion stated without supporting evidence, or with only decorative evidence. Often uses absolute language ("always," "never," "already the GOAT") without real data. |
 | `reaction` | A short, factual report of a recent event — a game result, trade, injury, award, or milestone — with no opinion or argument. Neutral, headline-style language. |
 
-### Hard edge case: the one-stat hot take
+**`analysis` examples:**
+- "Wembanyama's rookie blocks-per-36 (3.6) is higher than Hakeem's (3.1), KAT's (2.4), and Robinson's (3.3). Statistically he's having the best shot-blocking rookie season since Shaq. That's not hype, that's the data."
+- "The Celtics' defensive rating drops 8.2 points per 100 possessions in 4th quarters of games within 5 points — that's not a coach problem, that's their bench lineup. Check the lineup data on PBP Stats."
 
-A post that cites a single statistic to support a bold opinion sits at the hardest boundary. Decision rule: if the stat forms the logical core of the argument (removing it weakens the conclusion), label it `analysis`. If the stat is decorative — selected to make an assertion sound credible without building a real argument — label it `hot_take`.
+**`hot_take` examples:**
+- "Luka is already better than Dirk ever was and it's not even close. Just accept it."
+- "The Lakers will never win another championship with LeBron. He's too old and his supporting cast is cooked. Stop pretending otherwise."
+
+**`reaction` examples:**
+- "Nikola Jokic wins his fifth MVP in 6 years — record-tying achievement in NBA history"
+- "Boston Celtics trade Jaylen Brown to Warriors in 3-team deal involving Draymond Green"
+
+### Difficult examples and labeling decisions
+
+**Case 1 — The one-stat hot take** (hardest boundary)
+
+> "LeBron's playoff win rate against top-seeded opponents is below .500. He's overrated and people need to stop acting like he's infallible."
+
+The post cites a specific, verifiable stat, but the stat is cherry-picked to support a predetermined opinion. Removing the stat doesn't change the conclusion — the "LeBron is overrated" claim is the point, not an inference from evidence.
+
+→ Decision: `hot_take` (decorative evidence, not real analysis)
+
+**Case 2 — The rhetorical-question hot take**
+
+> "Victor Wembanyama blocks 7 shots in 28 minutes — is he already the best defensive player in the league? His combination of length, timing, and IQ on that end of the floor is unlike anything we've seen before."
+
+Framed as a question, but the body asserts "unlike anything we've seen before" without data. The question exists to float a bold claim rather than genuinely invite analysis.
+
+→ Decision: `hot_take`
+
+**Case 3 — The reactive game post that pivots to a pattern claim**
+
+> "Jayson Tatum's shooting slump continues — 4-of-19 from the field in Game 4 loss. These playoff shooting slumps are becoming a pattern. You can't go ice cold in three straight series and expect to win championships."
+
+The specific game stat (4-of-19) reports a real event, but the post's primary claim is a lasting critical opinion about Tatum. The game is context; the hot take is the thesis.
+
+→ Decision: `hot_take` (the reaction framing is a setup for the opinion)
 
 ---
 
@@ -44,9 +78,34 @@ The `analysis` class is 10 examples short of the 70-per-label target. Analytical
 
 ## Models
 
-**Fine-tuned model:** `distilbert-base-uncased` fine-tuned on 140 training examples for 3 epochs (learning rate 2e-5, batch size 16, warmup steps 50, weight decay 0.01).
+**Fine-tuned model:** `distilbert-base-uncased` fine-tuned on Google Colab (T4 GPU) on 140 training examples for 3 epochs (learning rate 2e-5, batch size 16, warmup steps 50, weight decay 0.01).
 
-**Baseline:** Zero-shot classification using `llama-3.3-70b-versatile` via the Groq API with a structured prompt defining each label and providing one example per class.
+**Training decision — 3 epochs:** Validation accuracy was tracked per epoch. It peaked at epoch 2 and plateaued rather than declining at epoch 3, confirming 3 epochs was appropriate. Increasing further risked overfitting on only 140 training examples; decreasing to 2 left accuracy lower than necessary.
+
+**Baseline:** Zero-shot classification using `llama-3.3-70b-versatile` via the Groq API. The prompt defines the community context, each label with a one-sentence definition, one example per label, and instructs the model to output only the label name.
+
+```
+You are classifying posts from r/nba, the primary subreddit for NBA basketball discussion.
+Assign each post to exactly one of the following categories.
+
+analysis: A structured argument backed by specific statistics, historical comparisons, or
+verifiable evidence. The evidence forms the logical core of the argument — removing it
+would substantially weaken the conclusion.
+Example: "Wembanyama's rookie blocks-per-36 (3.6) is higher than Hakeem's (3.1), KAT's
+(2.4), and Robinson's (3.3). Statistically he's having the best shot-blocking rookie
+season since Shaq. That's not hype, that's the data."
+
+hot_take: A bold, confident opinion stated without supporting evidence, or with only
+decorative evidence. Often uses absolute language without real data.
+Example: "Luka is already better than Dirk ever was and it's not even close. Just accept it."
+
+reaction: A short, factual report of a recent event — a game result, trade, injury, award,
+or milestone — with no argument or opinion. Neutral, headline-style language.
+Example: "Nikola Jokic wins his fifth MVP in 6 years — record-tying achievement in NBA history"
+
+Respond with ONLY the label name — one of: analysis, hot_take, reaction
+Do not explain your reasoning.
+```
 
 ---
 
@@ -119,9 +178,17 @@ This failure sits directly on the hardest boundary identified in planning.md: a 
 
 This is a factual event announcement — a pure reaction. The model again shows very low confidence (0.34). The most likely explanation: the phrase "for the first time" appears in both milestone announcements (reaction) and in comparative arguments ("for the first time in NBA history, X has done Y" as a rhetorical opener for a hot take). The model may have been misled by that novelty framing rather than reading the full sentence as a neutral announcement.
 
-### Pattern across both errors
+### Case 3 — `hot_take` predicted as `hot_take` but at near-chance confidence (0.35)
 
-Both errors occur at very low confidence (0.34–0.35). The model is not confidently wrong — it's uncertain at boundaries where surface features conflict with the underlying label. This is a data problem more than a prompt problem: the model needs more training examples that expose these specific conflict patterns (evaluative-but-unsupported, novelty-phrased-but-neutral).
+> "The Warriors blowing a 3-1 Finals lead in 2016 is the most consequential loss in NBA history because it directly caused the superteam arms race that defined the next five years of the league."
+
+**True:** `hot_take` → **Predicted:** `hot_take` (confidence: 0.35) ✓ correct but barely
+
+This post makes a bold historical claim with a causal argument ("directly caused") — a structure that looks like `analysis` at the surface. There are no statistics cited, but the logical framing (event → consequence → conclusion) closely resembles the reasoning pattern in real analysis examples. The model got it right but with essentially chance-level confidence, meaning a minor rephrasing could flip it. This confirms the same failure mode as Error 1: the model has not learned to distinguish analytical *structure* from analytical *evidence*.
+
+### Pattern across all three cases
+
+All three cases occur at or near chance confidence (0.34–0.37). The model is not confidently wrong — it's uncertain at boundaries where surface features (evaluative framing, causal language, novelty phrasing) conflict with the underlying label signal (absence of evidence, neutral factual content). This is a data problem more than a model problem: more training examples that expose these specific conflict patterns would push confidence higher on clear-cut cases and reduce errors at the boundaries.
 
 ---
 
